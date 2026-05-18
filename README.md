@@ -1,6 +1,4 @@
-Spatio-Temporal Sensor Calibration \& Validation Tooling, is designed to demonstrate your ability to ensure high-fidelity data integrity—a critical requirement for companies like AIM, PlusAI, and Zoox.
-
-Given your existing expertise in multi-camera calibration and intrinsic/extrinsic estimation from your AvaCAR and ASU projects, you can implement this project by following these six steps:
+Spatio-Temporal Sensor Calibration \& Validation Tooling.
 
 Step 1: Data Ingestion and Synchronization
 
