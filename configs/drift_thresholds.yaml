@@ -1,0 +1,14 @@
+# Drift detection tuning knobs.
+
+reprojection_error:
+  warn_px: 2.0    # per-frame mean error above this → warn
+  fail_px: 5.0    # per-frame mean error above this → flag drift
+
+temporal_window:
+  num_frames: 30          # sliding window for spatio-temporal trend
+  slope_threshold: 0.1    # px / frame growth that triggers drift
+
+edge_matching:
+  canny_low: 50
+  canny_high: 150
+  lidar_depth_grad_threshold: 0.5

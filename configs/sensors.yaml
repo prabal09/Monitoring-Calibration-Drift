@@ -1,0 +1,20 @@
+# Sensor intrinsics and initial (known-good) extrinsics.
+# Populate from dataset calibration files (e.g., NuScenes calibrated_sensor.json).
+
+cameras:
+  CAM_FRONT:
+    intrinsics: [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 1.0]]
+    distortion: [0.0, 0.0, 0.0, 0.0, 0.0]
+    extrinsics_T_lidar:  # 4x4 transform from LiDAR frame to camera frame
+      - [1.0, 0.0, 0.0, 0.0]
+      - [0.0, 1.0, 0.0, 0.0]
+      - [0.0, 0.0, 1.0, 0.0]
+      - [0.0, 0.0, 0.0, 1.0]
+
+lidars:
+  LIDAR_TOP:
+    extrinsics_T_ego:
+      - [1.0, 0.0, 0.0, 0.0]
+      - [0.0, 1.0, 0.0, 0.0]
+      - [0.0, 0.0, 1.0, 0.0]
+      - [0.0, 0.0, 0.0, 1.0]
