@@ -6,7 +6,7 @@ requires-python = ">=3.10"
 authors = [{ name = "Prabal Bijoy Dutta" }]
 dependencies = [
     "numpy",
-    "opencv-python",
+    "opencv-python-headless",
     "open3d",
     "nuscenes-devkit",
     "pyyaml",
