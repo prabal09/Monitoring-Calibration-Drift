@@ -14,7 +14,7 @@ The codebase is organized so that **each subpackage under `src/calibration_drift
 
 Data flow (left → right):
 
-```
+```text
 ingestion → features → projection → drift → viz / reporting
 ```
 
@@ -36,34 +36,55 @@ The tool is **config-driven**. Two YAML files in `configs/` control behavior:
 
 When changing detection behavior, prefer adjusting these YAMLs over hardcoding constants in module code.
 
+## Dev environment
+
+Code is edited on Windows and built/run inside Docker on an EC2 (Linux) instance. There is no local Docker workflow and no local repo on EC2 — the **Dockerfile clones the repo at build time**, so the image is a self-contained artifact and the only file needed on the EC2 host is the Dockerfile itself.
+
+Inside the running container, the repo lives at `/app` and is installed in editable mode (`pip install -e ".[dev]"`). `git pull` from inside the container picks up code changes immediately — no reinstall needed.
+
+When adding a Python dependency, edit `pyproject.toml`, commit + push from Windows, then rebuild the image on EC2 — do not `pip install` ad-hoc inside a running container.
+
 ## Commands
 
-This is a `pyproject.toml`-based project installed in editable mode. From the repo root (PowerShell):
+Build args `REPO_URL` (required) and `REPO_REF` (optional, defaults to `main`) control which repo + branch the image clones at build time.
 
-```powershell
-# First-time setup
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -e ".[dev]"
+```bash
+# On EC2 — repo is private, cloned via SSH. ssh-agent must be running with the
+# deploy key loaded; BuildKit forwards the agent socket into the build.
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_ed25519        # or whichever key is registered with GitHub
 
-# Tests
+docker build \
+    --ssh default \
+    --build-arg REPO_URL=git@github.com:<user>/Monitoring-Calibration-Drift.git \
+    -t calibration-drift .
+
+# Force re-clone when main has moved (Docker can't see remote HEAD changes)
+docker build --no-cache --ssh default \
+    --build-arg REPO_URL=git@github.com:<user>/Monitoring-Calibration-Drift.git \
+    -t calibration-drift .
+
+# Run the container — mount the host's SSH dir read-only so `git pull` inside
+# the container can authenticate against the private repo.
+docker run --rm -it -v ~/.ssh:/root/.ssh:ro calibration-drift
+
+# Inside the container (WORKDIR is /app, the cloned repo):
 pytest                                    # full suite
 pytest tests/test_projection.py           # one file
-pytest tests/test_projection.py::test_project_points_identity  # one test
+pytest tests/test_projection.py::test_point_on_optical_axis_projects_to_principal_point  # one test
 pytest -k "drift"                         # by name pattern
 
-# Lint / type-check
 ruff check .
 ruff format .
 mypy src/
+
+git pull                                  # update code in-place; editable install picks it up
 
 # CLI entrypoints (all currently raise NotImplementedError)
 python scripts/run_ingest.py --scene <scene_token>
 python scripts/run_drift_check.py --scene <scene_token> --config configs/drift_thresholds.yaml
 python scripts/generate_report.py --experiment <mlflow_experiment>
 ```
-
-`pip install -e .` is required before running anything — without it, the `calibration_drift` package isn't importable from `scripts/` or `tests/`.
 
 ## Conventions worth preserving
 
