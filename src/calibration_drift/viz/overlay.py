@@ -42,7 +42,9 @@ def draw_overlay(
     if len(pixels) == 0:
         return out
 
-    norm = np.clip(depths / max_depth, 0.0, 1.0)
+    # Invert so warm colors (red/yellow) = close and cool colors (blue) = far,
+    # which matches RViz / Foxglove / Open3D depth-viz convention.
+    norm = 1.0 - np.clip(depths / max_depth, 0.0, 1.0)
     norm_uint8 = (norm * 255).astype(np.uint8).reshape(-1, 1)
     colors_bgr = cv2.applyColorMap(norm_uint8, _CMAPS[cmap]).reshape(-1, 3)
     colors_rgb = colors_bgr[:, ::-1]
