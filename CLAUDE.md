@@ -80,10 +80,11 @@ mypy src/
 
 git pull                                  # update code in-place; editable install picks it up
 
-# CLI entrypoints (all currently raise NotImplementedError)
-python scripts/run_ingest.py --scene <scene_token>
-python scripts/run_drift_check.py --scene <scene_token> --config configs/drift_thresholds.yaml
-python scripts/generate_report.py --experiment <mlflow_experiment>
+# CLI entrypoints
+python scripts/show_overlay.py --out /overlays/overlay.png       # implemented — renders LiDAR-on-image overlay
+python scripts/run_ingest.py --scene <scene_token>               # stub
+python scripts/run_drift_check.py --scene <scene_token> --config configs/drift_thresholds.yaml  # stub
+python scripts/generate_report.py --experiment <mlflow_experiment>  # stub
 ```
 
 ## Conventions worth preserving
