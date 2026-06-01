@@ -33,7 +33,9 @@ def main():
     parser.add_argument("--camera", default="CAM_FRONT")
     parser.add_argument("--config", default="configs/drift_thresholds.yaml")
     parser.add_argument("--perturb-yaw-deg", type=float, default=0.0,
-                        help="Inject this much yaw drift (degrees) into T_cam_lidar to simulate calibration drift.")
+                        help="Constant yaw offset (degrees) applied every frame — simulates a step-impact drift event.")
+    parser.add_argument("--perturb-yaw-deg-per-frame", type=float, default=0.0,
+                        help="Additional yaw drift accumulated per frame — simulates gradual mechanical degradation.")
     args = parser.parse_args()
 
     with open(args.config) as f:
@@ -47,11 +49,10 @@ def main():
         slope_threshold=config["temporal_window"]["slope_threshold"],
     )
 
-    perturb = yaw_perturbation(args.perturb_yaw_deg) if args.perturb_yaw_deg else None
-
     print(f"Scene: {scene['name']} ({scene['nbr_samples']} samples), camera={args.camera}")
-    if perturb is not None:
-        print(f"Injecting {args.perturb_yaw_deg}° yaw drift into T_cam_lidar")
+    if args.perturb_yaw_deg or args.perturb_yaw_deg_per_frame:
+        print(f"Injecting yaw drift: static={args.perturb_yaw_deg}°, "
+              f"per-frame=+{args.perturb_yaw_deg_per_frame}°/frame")
     print()
 
     token = scene["first_sample_token"]
@@ -59,7 +60,12 @@ def main():
     while token:
         bundle = load_frame(nusc, token, camera_channel=args.camera)
 
-        T = perturb @ bundle.T_cam_lidar if perturb is not None else bundle.T_cam_lidar
+        # Total yaw drift at this frame = static offset + cumulative per-frame.
+        total_yaw_deg = args.perturb_yaw_deg + frame_idx * args.perturb_yaw_deg_per_frame
+        if total_yaw_deg:
+            T = yaw_perturbation(total_yaw_deg) @ bundle.T_cam_lidar
+        else:
+            T = bundle.T_cam_lidar
 
         h, w = bundle.image.shape[:2]
         pixels, _, _ = project_points(bundle.lidar_points, T, bundle.K, image_size=(w, h))
@@ -73,7 +79,8 @@ def main():
         detector.update(error)
 
         flag = "DRIFT" if detector.is_drifting() else "ok   "
-        print(f"[{frame_idx:3d}] error={error:5.2f}px  slope={detector.slope():+.3f} px/frame  {flag}")
+        print(f"[{frame_idx:3d}] error={error:5.2f}px  slope={detector.slope():+.3f} px/frame  "
+              f"yaw={total_yaw_deg:+5.2f}°  {flag}")
 
         token = nusc.get("sample", token)["next"]
         frame_idx += 1
