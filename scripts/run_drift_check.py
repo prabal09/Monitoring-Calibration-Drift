@@ -9,6 +9,7 @@ from nuscenes.nuscenes import NuScenes
 from calibration_drift.drift.detector import DriftDetector
 from calibration_drift.drift.error_metrics import mean_reprojection_error
 from calibration_drift.features.image_features import extract_edges
+from calibration_drift.features.lidar_features import extract_depth_edges
 from calibration_drift.ingestion.nuscenes_loader import load_frame
 from calibration_drift.projection.lidar_to_image import project_points
 
@@ -68,19 +69,31 @@ def main():
             T = bundle.T_cam_lidar
 
         h, w = bundle.image.shape[:2]
-        pixels, _, _ = project_points(bundle.lidar_points, T, bundle.K, image_size=(w, h))
+        pixels, depths, _ = project_points(bundle.lidar_points, T, bundle.K, image_size=(w, h))
+
+        # C1: restrict the error metric to projected LiDAR points at depth
+        # discontinuities (object silhouettes) — these are the points that
+        # *should* coincide with image edges if calibration is correct.
+        # Surface-hit points are excluded because their distance-to-edge
+        # encodes scene geometry, not calibration quality.
+        depth_edge_mask = extract_depth_edges(
+            pixels, depths,
+            k=config["edge_matching"].get("lidar_depth_edge_k", 5),
+            depth_threshold=config["edge_matching"]["lidar_depth_grad_threshold"],
+        )
+        edge_pixels = pixels[depth_edge_mask]
 
         edges = extract_edges(
             bundle.image,
             canny_low=config["edge_matching"]["canny_low"],
             canny_high=config["edge_matching"]["canny_high"],
         )
-        error = mean_reprojection_error(edges, pixels)
+        error = mean_reprojection_error(edges, edge_pixels)
         detector.update(error)
 
         flag = "DRIFT" if detector.is_drifting() else "ok   "
         print(f"[{frame_idx:3d}] error={error:5.2f}px  slope={detector.slope():+.3f} px/frame  "
-              f"yaw={total_yaw_deg:+5.2f}°  {flag}")
+              f"yaw={total_yaw_deg:+5.2f}°  n_edge_pts={depth_edge_mask.sum():4d}  {flag}")
 
         token = nusc.get("sample", token)["next"]
         frame_idx += 1

@@ -11,4 +11,5 @@ temporal_window:
 edge_matching:
   canny_low: 50
   canny_high: 150
-  lidar_depth_grad_threshold: 0.5
+  lidar_depth_grad_threshold: 0.5    # metres; min neighbor depth gap to qualify as a depth edge
+  lidar_depth_edge_k: 5              # number of pixel-space k-NN used to find depth edges
